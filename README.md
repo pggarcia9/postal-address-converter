@@ -52,10 +52,11 @@ parsed `Address` struct, which is the same shape either direction produces.
 That's the easiest way to check what the parser actually understood before
 trusting the formatted output.
 
-Known limitation: parsing a `usps` block back out, the street line is kept
-whole rather than split into street + unit, since Publication 28 doesn't
-fix where on the line a unit designator goes. Round-tripping `line -> usps
--> line` will fold a unit into the street rather than keeping it separate.
+Known limitation: parsing a `usps` block back out, the street line is only
+split into street + unit if it ends in one of the designators from
+Publication 28 appendix C (APT, UNIT, STE, #, and the like). An
+unrecognized designator stays folded into the street, since Publication 28
+doesn't fix where on the line it would go.
 
 ## Building
 

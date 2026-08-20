@@ -40,10 +40,39 @@ func ParseLine(s string) (Address, error) {
 	return addr, nil
 }
 
-// ParseUSPSBlock parses the two-line USPS mailing label block. Any unit
-// designator stays attached to the street line: this parser doesn't try
-// to split it back out into a separate field, since Publication 28
-// doesn't fix where on the line it goes.
+// unitDesignators are the secondary-address abbreviations listed in USPS
+// Publication 28 appendix C. "#" is handled separately below since it's a
+// prefix glued to the unit number ("#4") rather than a standalone word.
+var unitDesignators = []string{
+	"APT", "BLDG", "DEPT", "FL", "HNGR", "KEY", "LOT", "PIER",
+	"RM", "SLIP", "SPC", "STE", "TRLR", "UNIT",
+}
+
+// splitUnit looks for the first token in a street line that's a known unit
+// designator and splits the line there. Everything from that token on
+// becomes the unit; everything before it stays the street. If no
+// designator is found, the whole line is returned as the street.
+func splitUnit(line string) (street, unit string) {
+	fields := strings.Fields(line)
+	for i, f := range fields {
+		upper := strings.ToUpper(f)
+		if strings.HasPrefix(upper, "#") {
+			return strings.Join(fields[:i], " "), strings.Join(fields[i:], " ")
+		}
+		for _, d := range unitDesignators {
+			if upper == d {
+				return strings.Join(fields[:i], " "), strings.Join(fields[i:], " ")
+			}
+		}
+	}
+	return line, ""
+}
+
+// ParseUSPSBlock parses the two-line USPS mailing label block. If the
+// street line ends in a recognized unit designator (APT, UNIT, STE, #,
+// etc.), it's split back out into Street2; anything else stays folded
+// into Street1, since Publication 28 doesn't fix where on the line an
+// unrecognized designator would go.
 func ParseUSPSBlock(line1, line2 string) (Address, error) {
 	line1 = strings.TrimSpace(line1)
 	if line1 == "" {
@@ -58,8 +87,11 @@ func ParseUSPSBlock(line1, line2 string) (Address, error) {
 	state := fields[len(fields)-2]
 	city := strings.Join(fields[:len(fields)-2], " ")
 
+	street1, street2 := splitUnit(line1)
+
 	return Address{
-		Street1: line1,
+		Street1: street1,
+		Street2: street2,
 		City:    city,
 		State:   strings.ToUpper(state),
 		Zip:     zip,
