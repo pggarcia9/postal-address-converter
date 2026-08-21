@@ -68,28 +68,42 @@ func splitUnit(line string) (street, unit string) {
 	return line, ""
 }
 
-// ParseUSPSBlock parses the two-line USPS mailing label block. If the
-// street line ends in a recognized unit designator (APT, UNIT, STE, #,
+// ParseUSPSBlock parses the USPS mailing label block, either the two-line
+// street/city form or the three-line form with a recipient name on top. If
+// the street line ends in a recognized unit designator (APT, UNIT, STE, #,
 // etc.), it's split back out into Street2; anything else stays folded
 // into Street1, since Publication 28 doesn't fix where on the line an
 // unrecognized designator would go.
-func ParseUSPSBlock(line1, line2 string) (Address, error) {
-	line1 = strings.TrimSpace(line1)
-	if line1 == "" {
-		return Address{}, fmt.Errorf("usps block: line 1 (street) is empty")
+func ParseUSPSBlock(lines ...string) (Address, error) {
+	var name, streetLine, cityLine string
+	switch len(lines) {
+	case 2:
+		streetLine, cityLine = lines[0], lines[1]
+	case 3:
+		name, streetLine, cityLine = lines[0], lines[1], lines[2]
+	default:
+		return Address{}, fmt.Errorf(
+			"usps block: expected 2 lines (street, city/state/zip) or 3 (name, street, city/state/zip), got %d",
+			len(lines))
 	}
 
-	fields := strings.Fields(line2)
+	streetLine = strings.TrimSpace(streetLine)
+	if streetLine == "" {
+		return Address{}, fmt.Errorf("usps block: street line is empty")
+	}
+
+	fields := strings.Fields(cityLine)
 	if len(fields) < 3 {
-		return Address{}, fmt.Errorf("usps block: line 2 must be \"CITY ST ZIP\", got %q", line2)
+		return Address{}, fmt.Errorf("usps block: city/state/zip line must be \"CITY ST ZIP\", got %q", cityLine)
 	}
 	zip := fields[len(fields)-1]
 	state := fields[len(fields)-2]
 	city := strings.Join(fields[:len(fields)-2], " ")
 
-	street1, street2 := splitUnit(line1)
+	street1, street2 := splitUnit(streetLine)
 
 	return Address{
+		Name:    strings.TrimSpace(name),
 		Street1: street1,
 		Street2: street2,
 		City:    city,

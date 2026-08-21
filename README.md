@@ -17,9 +17,14 @@ small converter that does it the same way every time.
 123 Main St, Apt 4, Springfield, IL 62704
 ```
 
-**usps** - the two-line mailing label block:
+**usps** - the two-line mailing label block, or three lines with a
+recipient name on top:
 
 ```
+123 MAIN ST APT 4
+SPRINGFIELD IL 62704
+
+JANE DOE
 123 MAIN ST APT 4
 SPRINGFIELD IL 62704
 ```
@@ -45,7 +50,27 @@ $ addrconv to-line "123 MAIN ST APT 4" "SPRINGFIELD IL 62704"
 $ echo "123 Main St, Springfield, IL 62704" | addrconv to-usps
 123 MAIN ST
 SPRINGFIELD IL 62704
+
+$ addrconv to-usps --name "Jane Doe" "123 Main St, Springfield, IL 62704"
+JANE DOE
+123 MAIN ST
+SPRINGFIELD IL 62704
+
+$ addrconv to-line --json "JANE DOE" "123 MAIN ST" "SPRINGFIELD IL 62704"
+{
+  "name": "JANE DOE",
+  "street1": "123 MAIN ST",
+  "city": "SPRINGFIELD",
+  "state": "IL",
+  "zip": "62704"
+}
 ```
+
+`--name` prints a recipient name as the first line of the usps block. Going
+the other way, give `to-line` three lines instead of two (name, street,
+city/state/zip) and it comes back out on the `Address` as `Name`. The plain
+comma-separated `line` format has no slot for a name - it only round-trips
+street/city/state/zip.
 
 `--json` doesn't just reformat the target text as JSON - it prints the
 parsed `Address` struct, which is the same shape either direction produces.

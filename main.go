@@ -41,11 +41,16 @@ func usage() {
         SPRINGFIELD IL 62704
 
 Usage:
-  addrconv to-usps [--json] "<line address>"
-  addrconv to-line [--json] "<usps line 1>" "<usps line 2>"
+  addrconv to-usps [--json] [--name "<recipient>"] "<line address>"
+  addrconv to-line [--json] "<usps line 1>" "<usps line 2>" ["<usps line 3>"]
 
 If the address isn't given as an argument, it's read from stdin
-(one line for to-usps, two lines for to-line).
+(one line for to-usps, two or three lines for to-line).
+
+--name adds a recipient name as the first line of the usps block. When
+converting back with to-line, give three lines (name, street, city/state/zip)
+instead of two and it comes back out through --json as the address's Name
+field.
 
 --json prints the parsed address as a JSON object instead of the
 formatted text of the target format.
@@ -55,6 +60,7 @@ formatted text of the target format.
 func runToUSPS(args []string) {
 	fs := flag.NewFlagSet("to-usps", flag.ExitOnError)
 	jsonOut := fs.Bool("json", false, "print the parsed address as JSON")
+	name := fs.String("name", "", "recipient name, printed as the first line of the block")
 	fs.Parse(args)
 
 	line, err := readOneOrArg(fs.Args(), "to-usps")
@@ -66,6 +72,7 @@ func runToUSPS(args []string) {
 	if err != nil {
 		fail(err)
 	}
+	addr.Name = strings.TrimSpace(*name)
 	if err := addr.Validate(); err != nil {
 		fail(err)
 	}
@@ -74,9 +81,9 @@ func runToUSPS(args []string) {
 		printJSON(addr)
 		return
 	}
-	l1, l2 := addr.USPSLines()
-	fmt.Println(l1)
-	fmt.Println(l2)
+	for _, l := range addr.USPSBlock() {
+		fmt.Println(l)
+	}
 }
 
 func runToLine(args []string) {
@@ -85,18 +92,18 @@ func runToLine(args []string) {
 	fs.Parse(args)
 
 	rest := fs.Args()
-	var l1, l2 string
+	var lines []string
 	var err error
 	if len(rest) >= 2 {
-		l1, l2 = rest[0], rest[1]
+		lines = rest
 	} else {
-		l1, l2, err = readTwoFromStdin()
+		lines, err = readUSPSLinesFromStdin()
 		if err != nil {
 			fail(err)
 		}
 	}
 
-	addr, err := ParseUSPSBlock(l1, l2)
+	addr, err := ParseUSPSBlock(lines...)
 	if err != nil {
 		fail(err)
 	}
@@ -126,16 +133,20 @@ func readOneOrArg(args []string, cmd string) (string, error) {
 	return line, nil
 }
 
-func readTwoFromStdin() (string, string, error) {
+func readUSPSLinesFromStdin() ([]string, error) {
 	data, err := io.ReadAll(os.Stdin)
 	if err != nil {
-		return "", "", fmt.Errorf("reading stdin: %w", err)
+		return nil, fmt.Errorf("reading stdin: %w", err)
 	}
 	lines := strings.Split(strings.TrimRight(string(data), "\n"), "\n")
-	if len(lines) < 2 {
-		return "", "", fmt.Errorf("to-line: need two lines of input (usps block), got %d", len(lines))
+	if len(lines) < 2 || len(lines) > 3 {
+		return nil, fmt.Errorf(
+			"to-line: need two lines of input (usps block) or three (with a recipient name), got %d", len(lines))
 	}
-	return strings.TrimSpace(lines[0]), strings.TrimSpace(lines[1]), nil
+	for i := range lines {
+		lines[i] = strings.TrimSpace(lines[i])
+	}
+	return lines, nil
 }
 
 func printJSON(addr Address) {
