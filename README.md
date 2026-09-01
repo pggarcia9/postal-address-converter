@@ -77,6 +77,31 @@ parsed `Address` struct, which is the same shape either direction produces.
 That's the easiest way to check what the parser actually understood before
 trusting the formatted output.
 
+## Batch conversion
+
+```
+$ cat addresses.csv
+name,street1,street2,city,state,zip
+Jane Doe,123 Main St,Apt 4,Springfield,IL,62704
+,456 Oak Ave,,Portland,OR,97201
+
+$ addrconv batch addresses.csv
+JANE DOE
+123 MAIN ST APT 4
+SPRINGFIELD IL 62704
+
+456 OAK AVE
+PORTLAND OR 97201
+```
+
+`batch` reads a CSV file with a header row naming its columns - `name`,
+`street1`, `street2`, `city`, `state`, `zip` - in any order. `name` and
+`street2` are optional and may be blank. Each row prints as a usps block,
+separated by blank lines; with `--json`, each row prints as a JSON object
+instead. A row that fails to parse or validate is reported on stderr with
+its line number and skipped rather than stopping the whole file, and
+addrconv exits 1 if any row was skipped.
+
 Known limitation: parsing a `usps` block back out, the street line is only
 split into street + unit if it ends in one of the designators from
 Publication 28 appendix C (APT, UNIT, STE, #, and the like). An

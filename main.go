@@ -20,6 +20,8 @@ func main() {
 		runToUSPS(os.Args[2:])
 	case "to-line":
 		runToLine(os.Args[2:])
+	case "batch":
+		runBatch(os.Args[2:])
 	case "-h", "--help", "help":
 		usage()
 	default:
@@ -43,6 +45,7 @@ func usage() {
 Usage:
   addrconv to-usps [--json] [--name "<recipient>"] "<line address>"
   addrconv to-line [--json] "<usps line 1>" "<usps line 2>" ["<usps line 3>"]
+  addrconv batch [--json] <file.csv>
 
 If the address isn't given as an argument, it's read from stdin
 (one line for to-usps, two or three lines for to-line).
@@ -54,6 +57,13 @@ field.
 
 --json prints the parsed address as a JSON object instead of the
 formatted text of the target format.
+
+batch reads a CSV file with a header row naming its columns (name, street1,
+street2, city, state, zip - name and street2 are optional) and prints a
+usps block for each row, separated by blank lines. A row that fails to
+parse or validate is reported on stderr by its line number and skipped;
+addrconv exits 1 if any row was skipped. With --json, each row prints as a
+JSON object instead.
 `)
 }
 
@@ -116,6 +126,52 @@ func runToLine(args []string) {
 		return
 	}
 	fmt.Println(addr.Line())
+}
+
+func runBatch(args []string) {
+	fs := flag.NewFlagSet("batch", flag.ExitOnError)
+	jsonOut := fs.Bool("json", false, "print each parsed address as JSON instead of a usps block")
+	fs.Parse(args)
+
+	rest := fs.Args()
+	if len(rest) != 1 {
+		fail(fmt.Errorf("batch: expected a single CSV file path, got %d arguments", len(rest)))
+	}
+
+	f, err := os.Open(rest[0])
+	if err != nil {
+		fail(fmt.Errorf("batch: %w", err))
+	}
+	defer f.Close()
+
+	rows, err := ParseBatchCSV(f)
+	if err != nil {
+		fail(err)
+	}
+
+	ok := true
+	first := true
+	for _, row := range rows {
+		if row.Err != nil {
+			fmt.Fprintf(os.Stderr, "addrconv: batch line %d: %v\n", row.Line, row.Err)
+			ok = false
+			continue
+		}
+		if *jsonOut {
+			printJSON(row.Addr)
+			continue
+		}
+		if !first {
+			fmt.Println()
+		}
+		first = false
+		for _, l := range row.Addr.USPSBlock() {
+			fmt.Println(l)
+		}
+	}
+	if !ok {
+		os.Exit(1)
+	}
 }
 
 func readOneOrArg(args []string, cmd string) (string, error) {
