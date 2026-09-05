@@ -102,6 +102,12 @@ instead. A row that fails to parse or validate is reported on stderr with
 its line number and skipped rather than stopping the whole file, and
 addrconv exits 1 if any row was skipped.
 
+The `state` field is checked against the real list of USPS state, DC, and
+territory codes (Publication 28 Appendix B), plus the three military codes
+(AA, AE, AP) - so `ZZ` is rejected even though it matches the two-letter
+shape. Zip codes are only checked for shape (5 digits, or ZIP+4); there's no
+reference table cross-checking that a zip actually falls within its state.
+
 Known limitation: parsing a `usps` block back out, the street line is only
 split into street + unit if it ends in one of the designators from
 Publication 28 appendix C (APT, UNIT, STE, #, and the like). An

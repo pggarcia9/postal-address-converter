@@ -21,12 +21,21 @@ func TestValidate(t *testing.T) {
 		{"missing city", func(a Address) Address { a.City = ""; return a }, "missing city"},
 		{"lowercase state", func(a Address) Address { a.State = "il"; return a }, "state must be"},
 		{"long state", func(a Address) Address { a.State = "ILL"; return a }, "state must be"},
+		{"not a real state", func(a Address) Address { a.State = "ZZ"; return a }, "not a USPS state"},
+		{"territory is fine", func(a Address) Address { a.State = "PR"; return a }, ""},
+		{"military state is fine", func(a Address) Address { a.State = "AE"; return a }, ""},
 		{"short zip", func(a Address) Address { a.Zip = "6270"; return a }, "zip must be"},
 		{"zip+4 missing suffix digits", func(a Address) Address { a.Zip = "62704-12"; return a }, "zip must be"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			err := c.mod(base).Validate()
+			if c.want == "" {
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
+				return
+			}
 			if err == nil || !strings.Contains(err.Error(), c.want) {
 				t.Fatalf("expected error containing %q, got %v", c.want, err)
 			}

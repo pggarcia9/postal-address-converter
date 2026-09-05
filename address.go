@@ -23,6 +23,26 @@ var (
 	statePattern = regexp.MustCompile(`^[A-Z]{2}$`)
 )
 
+// validStateCodes are the two-letter codes USPS Publication 28 Appendix B
+// actually assigns: the 50 states, DC, the inhabited territories, and the
+// three military "state" codes (AA/AE/AP) used for APO/FPO/DPO mail. A
+// well-formed two-letter code that isn't on this list (e.g. "ZZ") is still
+// rejected - matching the pattern isn't the same as being a real place.
+var validStateCodes = map[string]bool{
+	"AL": true, "AK": true, "AZ": true, "AR": true, "CA": true, "CO": true,
+	"CT": true, "DE": true, "FL": true, "GA": true, "HI": true, "ID": true,
+	"IL": true, "IN": true, "IA": true, "KS": true, "KY": true, "LA": true,
+	"ME": true, "MD": true, "MA": true, "MI": true, "MN": true, "MS": true,
+	"MO": true, "MT": true, "NE": true, "NV": true, "NH": true, "NJ": true,
+	"NM": true, "NY": true, "NC": true, "ND": true, "OH": true, "OK": true,
+	"OR": true, "PA": true, "RI": true, "SC": true, "SD": true, "TN": true,
+	"TX": true, "UT": true, "VT": true, "VA": true, "WA": true, "WV": true,
+	"WI": true, "WY": true,
+	"DC": true,
+	"AS": true, "GU": true, "MP": true, "PR": true, "VI": true,
+	"AA": true, "AE": true, "AP": true,
+}
+
 func (a Address) Validate() error {
 	var problems []string
 	if strings.TrimSpace(a.Street1) == "" {
@@ -33,6 +53,8 @@ func (a Address) Validate() error {
 	}
 	if !statePattern.MatchString(a.State) {
 		problems = append(problems, fmt.Sprintf("state must be a two-letter code, got %q", a.State))
+	} else if !validStateCodes[a.State] {
+		problems = append(problems, fmt.Sprintf("%q is not a USPS state, DC, or territory code", a.State))
 	}
 	if !zipPattern.MatchString(a.Zip) {
 		problems = append(problems, fmt.Sprintf("zip must be 5 digits or ZIP+4, got %q", a.Zip))
