@@ -17,6 +17,12 @@ small converter that does it the same way every time.
 123 Main St, Apt 4, Springfield, IL 62704
 ```
 
+A trailing directional written as its own segment (`1600 Pennsylvania Ave,
+NW, Washington, DC 20500`) is recognized as part of the street rather than
+mistaken for a unit - only `N`, `S`, `E`, `W`, `NE`, `NW`, `SE`, and `SW` get
+this treatment, since those are the only standalone directionals Publication
+28 defines.
+
 **usps** - the two-line mailing label block, or three lines with a
 recipient name on top:
 

@@ -5,6 +5,16 @@ import (
 	"strings"
 )
 
+// directionals are the standalone directional abbreviations from USPS
+// Publication 28 appendix C. Some address sources write these as their own
+// comma segment ("1600 Pennsylvania Ave, NW, Washington, DC 20500") even
+// though there's no unit - that shouldn't be confused with the four-part
+// "Street, Unit, City, ST ZIP" form.
+var directionals = map[string]bool{
+	"N": true, "S": true, "E": true, "W": true,
+	"NE": true, "NW": true, "SE": true, "SW": true,
+}
+
 // ParseLine parses the "line" format: "Street, City, ST ZIP" or, with a
 // unit, "Street, Unit, City, ST ZIP".
 func ParseLine(s string) (Address, error) {
@@ -23,7 +33,11 @@ func ParseLine(s string) (Address, error) {
 		addr.City = parts[1]
 	case 4:
 		addr.Street1 = parts[0]
-		addr.Street2 = parts[1]
+		if directionals[strings.ToUpper(parts[1])] {
+			addr.Street1 += " " + parts[1]
+		} else {
+			addr.Street2 = parts[1]
+		}
 		addr.City = parts[2]
 	default:
 		return Address{}, fmt.Errorf(

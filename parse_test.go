@@ -36,6 +36,21 @@ func TestParseLine(t *testing.T) {
 			"123 Main St, Springfield, IL 62704,",
 			Address{Street1: "123 Main St", City: "Springfield", State: "IL", Zip: "62704"},
 		},
+		{
+			"trailing directional as its own segment",
+			"1600 Pennsylvania Ave, NW, Washington, DC 20500",
+			Address{Street1: "1600 Pennsylvania Ave NW", City: "Washington", State: "DC", Zip: "20500"},
+		},
+		{
+			"lowercase trailing directional",
+			"1600 Pennsylvania Ave, nw, Washington, DC 20500",
+			Address{Street1: "1600 Pennsylvania Ave nw", City: "Washington", State: "DC", Zip: "20500"},
+		},
+		{
+			"single-letter directional",
+			"100 Main St, N, Springfield, IL 62704",
+			Address{Street1: "100 Main St N", City: "Springfield", State: "IL", Zip: "62704"},
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
